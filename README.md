@@ -198,16 +198,16 @@ Benchmarks below were measured with `go version go1.26.0 darwin/arm64` on `Darwi
 
 | Benchmark | Time | Allocations |
 | --- | --- | --- |
-| BenchmarkValuePrimitive/registry_get | 76.79 ns/op | 0 B/op, 0 allocs/op |
-| BenchmarkValuePrimitive/weak_pointer_get | 32.70 ns/op | 0 B/op, 0 allocs/op |
-| BenchmarkValuePrimitive/registry_observe_getter | 2.112 ns/op | 0 B/op, 0 allocs/op |
-| BenchmarkNotify/registry_10_observers | 59.28 ns/op | 0 B/op, 0 allocs/op |
-| BenchmarkNotify/weak_pointer_10_observers | 303.7 ns/op | 144 B/op, 6 allocs/op |
-| BenchmarkComputedChain/registry_depth_3 | 523.1 ns/op | 0 B/op, 0 allocs/op |
-| BenchmarkComputedChain/weak_pointer_depth_3 | 404.5 ns/op | 224 B/op, 12 allocs/op |
-| BenchmarkListPrimitive/registry_set | 59.00 ns/op | 0 B/op, 0 allocs/op |
-| BenchmarkMapPrimitive/registry_set | 60.96 ns/op | 0 B/op, 0 allocs/op |
-| BenchmarkUIScenario/registry_widget_with_3_deps | 494.1 ns/op | 28 B/op, 3 allocs/op |
+| BenchmarkValuePrimitive/registry_get | 76.82 ns/op | 0 B/op, 0 allocs/op |
+| BenchmarkValuePrimitive/weak_pointer_get | 32.99 ns/op | 0 B/op, 0 allocs/op |
+| BenchmarkValuePrimitive/registry_observe_getter | 2.101 ns/op | 0 B/op, 0 allocs/op |
+| BenchmarkNotify/registry_10_observers | 59.09 ns/op | 0 B/op, 0 allocs/op |
+| BenchmarkNotify/weak_pointer_10_observers | 298.9 ns/op | 144 B/op, 6 allocs/op |
+| BenchmarkComputedChain/registry_depth_3 | 524.7 ns/op | 0 B/op, 0 allocs/op |
+| BenchmarkComputedChain/weak_pointer_depth_3 | 397.9 ns/op | 224 B/op, 12 allocs/op |
+| BenchmarkListPrimitive/registry_set | 58.78 ns/op | 0 B/op, 0 allocs/op |
+| BenchmarkMapPrimitive/registry_set | 60.02 ns/op | 0 B/op, 0 allocs/op |
+| BenchmarkUIScenario/registry_widget_with_3_deps | 477.2 ns/op | 28 B/op, 3 allocs/op |
 
 ## Thread Safety
 
