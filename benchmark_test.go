@@ -35,7 +35,7 @@ func BenchmarkSubscribe(b *testing.B) {
 		}
 
 		b.ResetTimer()
-		for i := 0; b.Loop(); i++ {
+		for i := 0; i < b.N; i++ {
 			values[i].Get(observers[i])
 		}
 	})
@@ -63,7 +63,7 @@ func BenchmarkSubscribe(b *testing.B) {
 		}
 
 		b.ResetTimer()
-		for i := 0; b.Loop(); i++ {
+		for i := 0; i < b.N; i++ {
 			values[i].Get(observers[i])
 		}
 	})
@@ -435,7 +435,7 @@ func BenchmarkCleanup(b *testing.B) {
 		observers := make([]*benchRegistryObserver, b.N)
 		values := make([]*SimpleValue[int], b.N)
 
-		for i := 0; b.Loop(); i++ {
+		for i := 0; i < b.N; i++ {
 			regs[i] = NewRegistry()
 			observers[i] = &benchRegistryObserver{registry: regs[i]}
 			values[i] = Simple(42)
@@ -443,7 +443,7 @@ func BenchmarkCleanup(b *testing.B) {
 		}
 
 		b.ResetTimer()
-		for i := 0; b.Loop(); i++ {
+		for i := 0; i < b.N; i++ {
 			regs[i].UnsubscribeAll(observers[i])
 		}
 	})
@@ -453,7 +453,7 @@ func BenchmarkCleanup(b *testing.B) {
 		regs := make([]*Registry, b.N)
 		observers := make([]*benchRegistryObserver, b.N)
 
-		for i := 0; b.Loop(); i++ {
+		for i := 0; i < b.N; i++ {
 			regs[i] = NewRegistry()
 			observers[i] = &benchRegistryObserver{registry: regs[i]}
 
@@ -465,7 +465,7 @@ func BenchmarkCleanup(b *testing.B) {
 		}
 
 		b.ResetTimer()
-		for i := 0; b.Loop(); i++ {
+		for i := 0; i < b.N; i++ {
 			regs[i].UnsubscribeAll(observers[i])
 		}
 	})
@@ -475,7 +475,7 @@ func BenchmarkCleanup(b *testing.B) {
 		regs := make([]*Registry, b.N)
 		observers := make([]*benchRegistryObserver, b.N)
 
-		for i := 0; b.Loop(); i++ {
+		for i := 0; i < b.N; i++ {
 			regs[i] = NewRegistry()
 			observers[i] = &benchRegistryObserver{registry: regs[i]}
 
@@ -486,7 +486,7 @@ func BenchmarkCleanup(b *testing.B) {
 		}
 
 		b.ResetTimer()
-		for i := 0; b.Loop(); i++ {
+		for i := 0; i < b.N; i++ {
 			regs[i].UnsubscribeAll(observers[i])
 		}
 	})
