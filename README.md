@@ -1,229 +1,207 @@
 # Observable
 
-A standalone reactive primitives library for Go with zero-allocation notification paths.
+`observable` is a small reactive primitives library for Go. It provides observable values, computed derivations, observable lists, observable maps, and explicit subscription lifecycle management for applications that need predictable change propagation.
 
-## Status
+The API is inspired by MobX-style observable and computed dependency tracking, implemented as idiomatic Go primitives.
 
-- This module was extracted from `gataengine/ui/observable`.
-- It is the active observable system used by Gata Engine UI code.
+Originally developed for Gata Engine UI, this module is distributed as the standalone package `github.com/gataengine/observable`.
 
-## Overview
+## Install
 
-This package provides reactive values (`SimpleValue`, `List`, `Map`) and computed derivations (`ComputedValue`) that automatically track dependencies and notify observers when values change.
-
-Two subscription mechanisms are available:
-- **Registry-based**: Centralized subscription management with zero-allocation notifications
-- **Weak pointer-based**: Per-observable subscriptions with automatic cleanup
+```sh
+go get github.com/gataengine/observable
+```
 
 ## Quick Start
 
 ```go
-// Create observable values
-name := observable.Simple("Alice")
-age := observable.Simple(30)
+package main
 
-// Create an observer
-var obs observable.BasicObserver
+import (
+	"fmt"
 
-// Observe values - returns a getter for efficient repeated access
-nameGetter := name.Observe(&obs)
-ageGetter := age.Observe(&obs)
+	"github.com/gataengine/observable"
+)
 
-fmt.Println(nameGetter.Get(), ageGetter.Get())  // "Alice 30"
+func main() {
+	name := observable.Simple("Alice")
 
-// Update triggers notification
-name.Set("Bob")
-if obs.IsUpdated() {
-    fmt.Println("Changed!")
-    obs.GetAndResetUpdated()  // Reset the flag
+	var obs observable.BasicObserver
+	getter := name.Observe(&obs)
+
+	fmt.Println(getter.Get())
+
+	name.Set("Bob")
+
+	if obs.GetAndResetUpdated() {
+		fmt.Println(getter.Get())
+	}
 }
 ```
 
-## Core Types
+## Concepts
 
-### SimpleValue[T]
+Observable reads are also subscription points:
 
-A mutable observable value.
+- `Get(obs)` returns the current value and subscribes `obs` to future changes.
+- `Peek()` returns the current value without subscribing.
+- `Observe(obs)` subscribes once and returns a getter for repeated reads without resubscribing.
 
-```go
-v := observable.Simple(42)
-v.Set(100)
+`BasicObserver` is the smallest observer implementation. It records whether any subscribed source changed, exposes `IsUpdated`, and lets callers consume the flag with `GetAndResetUpdated`.
 
-var obs observable.BasicObserver
-getter := v.Observe(&obs)
-val := getter.Get()  // 100
-
-// In-place update
-v.Update(func(n *int) { *n++ })
-```
-
-### List[T]
-
-An observable slice with fine-grained change tracking.
+Computed values track dependencies through the observer passed into the compute function. When a dependency changes, the computed value is marked dirty, notifies its observers, and recomputes on the next read.
 
 ```go
-list := observable.NewList[string]()
-list.Append("a", "b", "c")
-list.Set(1, "B")
-list.Remove(0)
-```
+first := observable.Simple("Ada")
+last := observable.Simple("Lovelace")
 
-### Map[K, V]
-
-An observable map.
-
-```go
-m := observable.NewMap[string, int]()
-m.Set("count", 1)
-val, ok := m.Get("count")
-m.Delete("count")
-```
-
-### ComputedValue[T]
-
-A derived value that automatically tracks dependencies.
-
-```go
-a := observable.Simple(1)
-b := observable.Simple(2)
-
-sum := observable.NewComputed(func(obs observable.Observer) int {
-    return a.Get(obs) + b.Get(obs)  // Dependencies auto-tracked
+fullName := observable.NewComputed(func(obs observable.Observer) string {
+	return first.Get(obs) + " " + last.Get(obs)
 })
 
-var myObs observable.BasicObserver
-getter := sum.Observe(&myObs)
-fmt.Println(getter.Get())  // 3
+var obs observable.BasicObserver
+getter := fullName.Observe(&obs)
 
-a.Set(10)
-// myObs.IsUpdated() is now true
-fmt.Println(getter.Get())  // 12
+fmt.Println(getter.Get()) // Ada Lovelace
+
+last.Set("Byron")
+
+if obs.GetAndResetUpdated() {
+	fmt.Println(getter.Get()) // Ada Byron
+}
 ```
 
-## Registry-based Subscriptions
+## Values
 
-For UI widgets with known lifecycles, use the Registry for zero-allocation notifications.
+Use `Simple` for comparable values. It skips notifications when the new value equals the old value.
 
-### Creating a Registry-aware Observer
+```go
+count := observable.Simple(1)
 
-Implement `RegistryProvider` to enable registry-based subscriptions:
+var obs observable.BasicObserver
+getter := count.Observe(&obs)
+
+count.Update(func(v *int) {
+	*v = *v + 1
+})
+
+fmt.Println(getter.Get()) // 2
+```
+
+Use `SimpleNonComparable` for slices, maps, functions, and other values that cannot be compared with `==`. It notifies observers whenever `Set`, `Update`, or a successful `MaybeUpdate` runs.
+
+```go
+items := observable.SimpleNonComparable([]string{"a"})
+
+var obs observable.BasicObserver
+getter := items.Observe(&obs)
+
+items.Update(func(v *[]string) {
+	*v = append(*v, "b")
+})
+
+fmt.Println(getter.Get()) // [a b]
+```
+
+## Lists
+
+`NewList` creates an observable list with stable item keys. `Add`, `Set`, and other content-changing mutations notify observers. `Move` preserves the moved item's key.
+
+```go
+todos := observable.NewList[string]()
+todos.Add("write docs", "ship package")
+
+var obs observable.BasicObserver
+view := todos.Observe(&obs)
+
+todos.Set(0, "review docs")
+todos.Move(1, 0)
+
+if obs.GetAndResetUpdated() {
+	for key, value := range view.All() {
+		fmt.Println(key, value)
+	}
+}
+```
+
+## Maps
+
+`NewMap` creates an observable map. `Set`, `Delete`, `Merge`, `Replace`, and `Clear` notify observers.
+
+```go
+scores := observable.NewMap[string, int]()
+scores.Set("alice", 10)
+
+var obs observable.BasicObserver
+view := scores.Observe(&obs)
+
+scores.Set("alice", 11)
+
+if obs.GetAndResetUpdated() {
+	if score, ok := view.Get("alice"); ok {
+		fmt.Println(score)
+	}
+}
+```
+
+## Subscription Modes
+
+Standalone observers use weak references by default. This keeps simple use cases lightweight: observe values with a `BasicObserver`, then let normal Go ownership decide when the observer disappears.
+
+For objects with explicit lifecycles, use a `Registry`. Any observer that implements `ObservableRegistry` and `CurrentObserver` routes subscriptions through that registry, which can drain dirty observers and unsubscribe all subscriptions owned by an observer.
 
 ```go
 type Widget struct {
-    observable.BasicObserver
-    registry *observable.Registry
+	observable.BasicObserver
+	registry *observable.Registry
+}
+
+func NewWidget(registry *observable.Registry) *Widget {
+	return &Widget{registry: registry}
 }
 
 func (w *Widget) ObservableRegistry() *observable.Registry {
-    return w.registry
+	return w.registry
 }
 
 func (w *Widget) CurrentObserver() observable.Observer {
-    return w
+	return w
+}
+
+func main() {
+	registry := observable.NewRegistry()
+	widget := NewWidget(registry)
+	name := observable.Simple("Alice")
+
+	getter := name.Observe(widget)
+	name.Set("Bob")
+
+	for _, dirty := range registry.DrainDirty() {
+		if dirty == widget {
+			fmt.Println(getter.Get())
+		}
+	}
+
+	registry.UnsubscribeAll(widget)
 }
 ```
 
-### Using Registry
-
-```go
-reg := observable.NewRegistry()
-widget := &Widget{registry: reg}
-
-v := observable.Simple(42)
-
-// When widget observes v, it auto-binds to the registry
-getter := v.Observe(widget)
-
-// Later, when widget is destroyed
-reg.UnsubscribeAll(widget)
-```
-
-### Computed with Registry
-
-`ComputedValue` implements `RegistryProvider`, so computed chains automatically use the registry:
-
-```go
-a := observable.Simple(1)
-
-// When computed observes 'a', both bind to the same registry
-sum := observable.NewComputed(func(obs observable.Observer) int {
-    return a.Get(obs) * 2
-})
-
-// Observe with a registry-aware widget
-getter := sum.Observe(widget)
-```
+Computed and mapped values also participate in registry cleanup. When a registry-owned observer is unsubscribed, orphaned computed or mapped dependencies are cleaned up recursively.
 
 ## Performance
 
-Zero-allocation notification paths in steady state:
+Observable supports both registry-backed subscriptions and standalone weak-pointer subscriptions. Registry-backed observers make lifecycle cleanup explicit and give applications a central dirty queue. Standalone observers keep one-off use cases simple without requiring a registry.
 
-| Operation | Observers | Time | Allocations |
-|-----------|-----------|------|-------------|
-| Notify | 1 | 43ns | 0 |
-| Notify | 10 | 57ns | 0 |
-| Notify | 100 | 755ns | 0 |
+Computed values cache their last result and recompute only after a dependency marks them dirty. List and map mutations notify observers after the internal mutation is complete.
 
-## Architecture
+Run benchmarks locally with:
 
-### hybridset
-
-Internal data structure optimized for typical UI patterns:
-
-- **Small mode** (< 32 items): slice + map for fast iteration
-- **Large mode** (>= 32 items): upgrades to `xsync.MapOf` for concurrent access
-
-### Pool[T]
-
-Typed slice pool for zero-allocation iteration:
-
-```go
-pool := hybridset.NewPool[Observer](32)
-ptr := pool.Get(size)
-// use *ptr
-pool.Put(ptr)
+```sh
+go test -bench=. -benchmem
 ```
 
-### Range/CopyTo Pattern
-
-`Set.Range` returns `useCopyTo bool`:
-- **xsync mode**: Iterates directly, returns `false`
-- **small mode**: Returns `true` without iterating (use `CopyTo` with pool)
-
-```go
-useCopyTo := set.Range(func(item T) bool {
-    process(item)
-    return true
-})
-if useCopyTo {
-    ptr := pool.Get(set.Size())
-    set.CopyTo(*ptr)
-    for _, item := range *ptr {
-        process(item)
-    }
-    pool.Put(ptr)
-}
-```
+Benchmark results will be machine-specific, so measure in the environment that matters for your application.
 
 ## Thread Safety
 
-- `Registry`: Safe for concurrent use (uses `sync.RWMutex`)
-- `hybridset.Set`: Safe for concurrent use (small mode uses `RWMutex`, large mode uses `xsync.MapOf`)
-- `SimpleValue`/`List`/`Map`: Safe for concurrent reads; writes should be synchronized externally
-
-## File Structure
-
-```
-.
-├── interfaces.go      # Observable, Observer, RegistryProvider interfaces
-├── observer.go        # BasicObserver implementation
-├── observable.go      # observableBase with dual subscription paths
-├── registry.go        # Centralized subscription registry
-├── simple.go          # SimpleValue[T] implementation
-├── list.go            # List[T] implementation
-├── map.go             # Map[K,V] implementation
-├── computed.go        # ComputedValue[T] implementation
-└── hybridset/
-    ├── set.go         # Hybrid set (slice+map / xsync)
-    └── pool.go        # Typed slice pool
-```
+`Registry`, `List`, and `Map` synchronize their internal state. `SimpleValue` and `NonComparableValue` writes should be externally synchronized if multiple goroutines write the same value. `All` and `PeekAll` iterators on lists and maps hold a read lock while the iterator is consumed.
