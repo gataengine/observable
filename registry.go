@@ -14,7 +14,8 @@ var (
 // Registry owns subscriptions for observers with explicit lifecycles.
 // RegistryProvider uses this path automatically. A Registry can unsubscribe all
 // subscriptions for an observer, drain dirty observers, and cascade cleanup
-// through computed and mapped values.
+// through computed and mapped values. Observers without a RegistryProvider use
+// standalone weak-pointer subscriptions instead.
 // Registry is safe for concurrent use.
 type Registry struct {
 	mu             sync.RWMutex

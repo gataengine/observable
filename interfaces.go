@@ -5,6 +5,7 @@ import "iter"
 // Observer receives change notifications from values it has subscribed to.
 // BasicObserver is the normal implementation. Passing an Observer to Get or
 // Observe subscribes it to later updates unless the observer is Noop.
+// Standalone observers use weak-pointer subscriptions by default.
 type Observer interface {
 	MarkUpdated()
 	GetObserver() *observerState
@@ -16,7 +17,8 @@ type Observable interface {
 }
 
 // RegistryProvider lets an observer route subscriptions through a Registry.
-// This is useful for observers with explicit lifecycles. CurrentObserver
+// This is useful for observers with explicit lifecycles; observers that do not
+// provide a registry use the standalone weak-pointer path. CurrentObserver
 // returns the observer identity stored in the registry.
 type RegistryProvider interface {
 	ObservableRegistry() *Registry
