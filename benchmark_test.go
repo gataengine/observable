@@ -149,6 +149,200 @@ func BenchmarkGetSet(b *testing.B) {
 }
 
 // =============================================================================
+// Primitive Read/Write Benchmarks
+// =============================================================================
+
+func BenchmarkValuePrimitive(b *testing.B) {
+	b.Run("peek", func(b *testing.B) {
+		v := Simple(42)
+
+		b.ReportAllocs()
+		b.ResetTimer()
+		for b.Loop() {
+			_ = v.Peek()
+		}
+	})
+
+	b.Run("registry_get", func(b *testing.B) {
+		reg := NewRegistry()
+		obs := &benchRegistryObserver{registry: reg}
+		v := Simple(42)
+		v.Get(obs)
+
+		b.ReportAllocs()
+		b.ResetTimer()
+		for b.Loop() {
+			_ = v.Get(obs)
+		}
+	})
+
+	b.Run("weak_pointer_get", func(b *testing.B) {
+		obs := &BasicObserver{}
+		v := Simple(42)
+		v.Get(obs)
+
+		b.ReportAllocs()
+		b.ResetTimer()
+		for b.Loop() {
+			_ = v.Get(obs)
+		}
+	})
+
+	b.Run("registry_observe_getter", func(b *testing.B) {
+		reg := NewRegistry()
+		obs := &benchRegistryObserver{registry: reg}
+		v := Simple(42)
+		getter := v.Observe(obs)
+
+		b.ReportAllocs()
+		b.ResetTimer()
+		for b.Loop() {
+			_ = getter.Get()
+		}
+	})
+
+	b.Run("weak_pointer_observe_getter", func(b *testing.B) {
+		obs := &BasicObserver{}
+		v := Simple(42)
+		getter := v.Observe(obs)
+
+		b.ReportAllocs()
+		b.ResetTimer()
+		for b.Loop() {
+			_ = getter.Get()
+		}
+	})
+}
+
+func BenchmarkListPrimitive(b *testing.B) {
+	b.Run("registry_getter_at", func(b *testing.B) {
+		reg := NewRegistry()
+		obs := &benchRegistryObserver{registry: reg}
+		list := NewList[int]()
+		for i := range 100 {
+			list.Add(i)
+		}
+		getter := list.Observe(obs)
+
+		b.ReportAllocs()
+		b.ResetTimer()
+		for b.Loop() {
+			_, _, _ = getter.At(50)
+		}
+	})
+
+	b.Run("weak_pointer_getter_at", func(b *testing.B) {
+		obs := &BasicObserver{}
+		list := NewList[int]()
+		for i := range 100 {
+			list.Add(i)
+		}
+		getter := list.Observe(obs)
+
+		b.ReportAllocs()
+		b.ResetTimer()
+		for b.Loop() {
+			_, _, _ = getter.At(50)
+		}
+	})
+
+	b.Run("registry_set", func(b *testing.B) {
+		reg := NewRegistry()
+		obs := &benchRegistryObserver{registry: reg}
+		list := NewList[int]()
+		for i := range 100 {
+			list.Add(i)
+		}
+		list.Observe(obs)
+
+		b.ReportAllocs()
+		b.ResetTimer()
+		for i := 0; b.Loop(); i++ {
+			_ = list.Set(50, i)
+		}
+	})
+
+	b.Run("weak_pointer_set", func(b *testing.B) {
+		obs := &BasicObserver{}
+		list := NewList[int]()
+		for i := range 100 {
+			list.Add(i)
+		}
+		list.Observe(obs)
+
+		b.ReportAllocs()
+		b.ResetTimer()
+		for i := 0; b.Loop(); i++ {
+			_ = list.Set(50, i)
+		}
+	})
+}
+
+func BenchmarkMapPrimitive(b *testing.B) {
+	b.Run("registry_getter_get", func(b *testing.B) {
+		reg := NewRegistry()
+		obs := &benchRegistryObserver{registry: reg}
+		m := NewMap[string, int]()
+		for i := range 100 {
+			m.Set("key-"+itoa(i), i)
+		}
+		getter := m.Observe(obs)
+
+		b.ReportAllocs()
+		b.ResetTimer()
+		for b.Loop() {
+			_, _ = getter.Get("key-50")
+		}
+	})
+
+	b.Run("weak_pointer_getter_get", func(b *testing.B) {
+		obs := &BasicObserver{}
+		m := NewMap[string, int]()
+		for i := range 100 {
+			m.Set("key-"+itoa(i), i)
+		}
+		getter := m.Observe(obs)
+
+		b.ReportAllocs()
+		b.ResetTimer()
+		for b.Loop() {
+			_, _ = getter.Get("key-50")
+		}
+	})
+
+	b.Run("registry_set", func(b *testing.B) {
+		reg := NewRegistry()
+		obs := &benchRegistryObserver{registry: reg}
+		m := NewMap[string, int]()
+		for i := range 100 {
+			m.Set("key-"+itoa(i), i)
+		}
+		m.Observe(obs)
+
+		b.ReportAllocs()
+		b.ResetTimer()
+		for i := 0; b.Loop(); i++ {
+			m.Set("key-50", i)
+		}
+	})
+
+	b.Run("weak_pointer_set", func(b *testing.B) {
+		obs := &BasicObserver{}
+		m := NewMap[string, int]()
+		for i := range 100 {
+			m.Set("key-"+itoa(i), i)
+		}
+		m.Observe(obs)
+
+		b.ReportAllocs()
+		b.ResetTimer()
+		for i := 0; b.Loop(); i++ {
+			m.Set("key-50", i)
+		}
+	})
+}
+
+// =============================================================================
 // Computed Chain Benchmarks
 // =============================================================================
 
