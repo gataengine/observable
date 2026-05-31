@@ -16,7 +16,7 @@ type probeObserver interface {
 	isProbe()
 }
 
-// Get returns the computed value and subscribes the observer.
+// Get returns the current value and subscribes obs.
 func (c *ComputedValue[T]) Get(obs Observer) T {
 	c.maybeAddObserver(c, obs)
 	if _, ok := obs.(probeObserver); ok {
@@ -25,7 +25,7 @@ func (c *ComputedValue[T]) Get(obs Observer) T {
 	return c.get()
 }
 
-// Peek returns the computed value without subscribing any observer.
+// Peek returns the current value without subscribing an observer.
 // If the value is dirty, it will be recomputed.
 func (c *ComputedValue[T]) Peek() T {
 	return c.get()
@@ -38,7 +38,7 @@ func (c *ComputedValue[T]) get() T {
 	return c.cachedValue
 }
 
-// Observe returns a ValueGetter for repeated access without re-subscribing.
+// Observe subscribes obs and returns a getter for repeated reads.
 func (c *ComputedValue[T]) Observe(obs Observer) ValueGetter[T] {
 	c.maybeAddObserver(c, obs)
 	return &computedGetter[T]{
@@ -47,13 +47,11 @@ func (c *ComputedValue[T]) Observe(obs Observer) ValueGetter[T] {
 }
 
 // ObservableRegistry implements RegistryProvider.
-// Returns the registry this computed is bound to (may be nil).
 func (c *ComputedValue[T]) ObservableRegistry() *Registry {
 	return c.registry.Load()
 }
 
 // CurrentObserver implements RegistryProvider.
-// Returns the computed itself as the observer for dependency tracking.
 func (c *ComputedValue[T]) CurrentObserver() Observer {
 	return c
 }
@@ -75,8 +73,8 @@ func newComputedValue[T any](f func(obs Observer) T) *ComputedValue[T] {
 	return c
 }
 
-// NewComputed creates a new computed observable.
-// If f depends only on static values, returns a staticValue instead.
+// NewComputed creates a read-only observable value derived from other
+// observables.
 func NewComputed[T any](f func(obs Observer) T) ROValue[T] {
 	probe := &staticProbe{}
 	value := f(probe)
@@ -86,9 +84,8 @@ func NewComputed[T any](f func(obs Observer) T) ROValue[T] {
 	return newComputedValue(f)
 }
 
-// NewCachedComputed creates a computed with a separate binding phase.
-// bind is called once to capture dependencies, calc is called on each recompute.
-// If bind discovers only static dependencies, returns a staticValue.
+// NewCachedComputed creates a computed value with a separate dependency binding
+// phase.
 func NewCachedComputed[T, C any](bind func(obs Observer) C, calc func(C) T) ROValue[T] {
 	probe := &staticProbe{}
 	binder := bind(probe)

@@ -1,7 +1,7 @@
 package observable
 
-// SimpleNonComparable creates a new observable value with the given initial value.
-// Unlike Simple, it does not deduplicate — every Set triggers a notification.
+// SimpleNonComparable creates an observable value for values that cannot be
+// compared.
 func SimpleNonComparable[T any](initial T) *NonComparableValue[T] {
 	return &NonComparableValue[T]{
 		value: initial,
@@ -21,13 +21,13 @@ func (v *NonComparableValue[T]) Set(n T) {
 	v.notifyChanged(v)
 }
 
-// Get returns the current value and subscribes the observer.
+// Get returns the current value and subscribes obs.
 func (v *NonComparableValue[T]) Get(obs Observer) T {
 	v.maybeAddObserver(v, obs)
 	return v.value
 }
 
-// Peek returns the current value without subscribing any observer.
+// Peek returns the current value without subscribing an observer.
 func (v *NonComparableValue[T]) Peek() T {
 	return v.value
 }
@@ -46,7 +46,7 @@ func (v *NonComparableValue[T]) MaybeUpdate(cb func(*T) bool) {
 	}
 }
 
-// Observe returns a ValueGetter for repeated access without re-subscribing.
+// Observe subscribes obs and returns a getter for repeated reads.
 func (v *NonComparableValue[T]) Observe(obs Observer) ValueGetter[T] {
 	v.maybeAddObserver(v, obs)
 	return &NonComparableValueGetter[T]{

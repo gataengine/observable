@@ -1,11 +1,6 @@
 package observable
 
-// Mapped creates a new MappedValue that derives U from a single source ROValue[T]
-// using a pure transform function. Subscription is lazy — the source is not read
-// until the first Get() call.
-//
-// If the source is a static value, Mapped folds at creation time and returns a
-// staticValue[U] directly, avoiding any allocation or subscription overhead.
+// Mapped creates a read-only observable value derived from source.
 func Mapped[T, U any](source ROValue[T], fn func(T) U) ROValue[U] {
 	if _, ok := source.(staticValue[T]); ok {
 		return staticValue[U]{value: fn(source.Peek())}
@@ -30,14 +25,13 @@ type MappedValue[T, U any] struct {
 	observableBase
 }
 
-// Get returns the mapped value, subscribing the observer and lazily binding to
-// the source if this is the first call.
+// Get returns the current value and subscribes obs.
 func (m *MappedValue[T, U]) Get(obs Observer) U {
 	m.maybeAddObserver(m, obs)
 	return m.get()
 }
 
-// Peek returns the mapped value without subscribing any observer.
+// Peek returns the current value without subscribing an observer.
 // If the value is dirty or uninitialized, it will be recomputed.
 func (m *MappedValue[T, U]) Peek() U {
 	return m.get()
@@ -53,7 +47,7 @@ func (m *MappedValue[T, U]) get() U {
 	return m.cached
 }
 
-// Observe subscribes the observer and returns a ValueGetter for repeated access.
+// Observe subscribes obs and returns a getter for repeated reads.
 func (m *MappedValue[T, U]) Observe(obs Observer) ValueGetter[U] {
 	m.maybeAddObserver(m, obs)
 	return &mappedGetter[T, U]{m: m}

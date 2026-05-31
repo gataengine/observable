@@ -1,16 +1,6 @@
 package observable
 
-// NewBidiMapped creates a bidirectional mapped value that maintains reactive
-// two-way sync between a source Value[S] and a derived representation T.
-//
-// forward transforms source→mapped (must always succeed).
-// reverse transforms mapped→source (may fail, returning false).
-//
-// During editing, Set() caches the raw value locally so Get() returns exactly
-// what was written — even if reverse fails. The cache clears automatically when
-// the source changes externally, or manually via ClearCache().
-//
-// Valid() exposes whether the last Set() successfully parsed.
+// NewBidiMapped creates a two-way mapped value backed by source.
 func NewBidiMapped[S, T any](source Value[S], forward func(S) T, reverse func(T) (S, bool)) *BidiMappedValue[S, T] {
 	b := &BidiMappedValue[S, T]{
 		source:  source,
@@ -23,7 +13,7 @@ func NewBidiMapped[S, T any](source Value[S], forward func(S) T, reverse func(T)
 }
 
 // BidiMappedValue is a bidirectional mapped observable with a write-through cache.
-// It implements Value[T] — reads return the cached value (if any) or forward(source),
+// It implements Value[T]; reads return the cached value, if any, or forward(source),
 // and writes attempt to parse via reverse and propagate to source.
 type BidiMappedValue[S, T any] struct {
 	BasicObserver
@@ -35,10 +25,10 @@ type BidiMappedValue[S, T any] struct {
 	valid   *SimpleValue[bool]
 
 	cached    *T   // nil = no cache, use forward(source)
-	selfWrite bool // true while propagating Set → source.Set to suppress echo
+	selfWrite bool // true while propagating Set to source.Set to suppress echo
 }
 
-// Get returns the cached value if present, otherwise forward(source.Get(obs)).
+// Get returns the current value and subscribes obs.
 func (b *BidiMappedValue[S, T]) Get(obs Observer) T {
 	b.maybeAddObserver(b, obs)
 	return b.get(obs)
@@ -112,7 +102,7 @@ func (b *BidiMappedValue[S, T]) onSourceChange() {
 	b.notifyChanged(b)
 }
 
-// Observe subscribes the observer and returns a ValueGetter for repeated access.
+// Observe subscribes obs and returns a getter for repeated reads.
 func (b *BidiMappedValue[S, T]) Observe(obs Observer) ValueGetter[T] {
 	b.maybeAddObserver(b, obs)
 	return &bidiMappedGetter[S, T]{b: b}
@@ -133,8 +123,7 @@ func (b *BidiMappedValue[S, T]) CurrentObserver() Observer {
 	return b
 }
 
-// Peek returns the cached value if present, otherwise forward(source.Peek()).
-// Does not subscribe any observer.
+// Peek returns the current value without subscribing an observer.
 func (b *BidiMappedValue[S, T]) Peek() T {
 	if b.cached != nil {
 		return *b.cached

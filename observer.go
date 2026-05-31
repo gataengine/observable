@@ -17,8 +17,8 @@ func (b *observerState) MarkUpdated() {
 	}
 }
 
-// Noop is a no-op observer that ignores notifications and never subscribes.
-// Use for reading observable values without establishing a subscription.
+// Noop can be passed to Get when the caller wants the subscribed-read API
+// without creating a subscription.
 var Noop Observer = &noopObserver{}
 
 type noopObserver struct {
@@ -28,7 +28,8 @@ type noopObserver struct {
 func (n *noopObserver) GetObserver() *observerState { return nil }
 func (n *noopObserver) MarkUpdated()                {}
 
-// BasicObserver provides a simple observer implementation.
+// BasicObserver is a minimal Observer. Embed it or allocate it directly to know
+// whether a subscribed source changed.
 type BasicObserver struct {
 	observerState
 }

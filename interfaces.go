@@ -2,33 +2,37 @@ package observable
 
 import "iter"
 
-// Observer is notified when an observable changes.
+// Observer receives change notifications from values it has subscribed to.
+// BasicObserver is the normal implementation. Passing an Observer to Get or
+// Observe subscribes it to later updates unless the observer is Noop.
 type Observer interface {
 	MarkUpdated()
 	GetObserver() *observerState
 }
 
-// Observable represents a value that can be observed.
+// Observable is a source that can remove a previously subscribed observer.
 type Observable interface {
 	RemoveObserver(obs Observer)
 }
 
-// RegistryProvider allows observers to provide registry context for lazy binding.
-// When an observer implements this, observables can auto-bind to the registry.
+// RegistryProvider lets an observer route subscriptions through a Registry.
+// This is useful for observers with explicit lifecycles. CurrentObserver
+// returns the observer identity stored in the registry.
 type RegistryProvider interface {
 	ObservableRegistry() *Registry
 	CurrentObserver() Observer
 }
 
-// DependentObservable is an observable that also observes other observables.
-// Used for cascading cleanup in UnsubscribeAll - when a DependentObservable
-// has no remaining observers, its own subscriptions are also cleaned up.
+// DependentObservable is both an observable source and an observer of upstream
+// sources. Registry uses this shape for recursive cleanup of computed and
+// mapped values.
 type DependentObservable interface {
 	Observable
 	Observer
 }
 
-// ROValue is a read-only observable value.
+// ROValue is a read-only observable value. Get subscribes the observer, Peek
+// reads without subscribing, and Observe subscribes once and returns a getter.
 type ROValue[T any] interface {
 	Get(obs Observer) T
 	Peek() T
@@ -36,7 +40,7 @@ type ROValue[T any] interface {
 	RemoveObserver(obs Observer)
 }
 
-// Value is a read-write observable value.
+// Value is a mutable observable value.
 type Value[T any] interface {
 	ROValue[T]
 	Set(T)
@@ -44,12 +48,13 @@ type Value[T any] interface {
 	MaybeUpdate(func(*T) bool)
 }
 
-// ValueGetter provides cached access to a value without re-subscribing.
+// ValueGetter reads a subscribed value without re-subscribing.
 type ValueGetter[T any] interface {
 	Get() T
 }
 
-// ROList is a read-only observable list with stable int64 keys.
+// ROList is a read-only observable list with stable item keys. Len, At, and All
+// subscribe the observer; PeekLen, PeekAt, and PeekAll do not.
 type ROList[T any] interface {
 	Observe(obs Observer) ListGetter[T]
 	Len(obs Observer) int
@@ -61,7 +66,7 @@ type ROList[T any] interface {
 	RemoveObserver(obs Observer)
 }
 
-// ListGetter provides subscribed read-only access to list items.
+// ListGetter reads a subscribed list without re-subscribing.
 type ListGetter[T any] interface {
 	Len() int
 	At(index int) (key int64, value T, ok bool)
@@ -72,7 +77,8 @@ type ListGetter[T any] interface {
 	ValueByKey(key int64) (value T, ok bool)
 }
 
-// ROMap is a read-only observable map.
+// ROMap is a read-only observable map. Get and All subscribe the observer;
+// Peek, PeekLen, and PeekAll do not.
 type ROMap[K comparable, V any] interface {
 	Observe(obs Observer) *MapGetter[K, V]
 	Get(obs Observer, key K) (V, bool)

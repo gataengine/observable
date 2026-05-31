@@ -25,8 +25,8 @@ type ComputedList[K comparable, V any] struct {
 
 var _ ROList[int] = (*ComputedList[int, int])(nil)
 
-// NewComputedList creates a new computed list.
-// The function f is called to derive list contents from observed dependencies.
+// NewComputedList creates a read-only observable list derived from other
+// observables.
 // Duplicate keys in f's result cause a panic.
 func NewComputedList[K comparable, V any](
 	f func(obs Observer) []ComputedListItem[K, V],
@@ -84,19 +84,19 @@ func (c *ComputedList[K, V]) CurrentObserver() Observer {
 	return c
 }
 
-// Observe subscribes the observer and returns a ListGetter.
+// Observe subscribes obs and returns a getter for repeated reads.
 func (c *ComputedList[K, V]) Observe(obs Observer) ListGetter[V] {
 	c.maybeAddObserver(c, obs)
 	return &ComputedListGetter[K, V]{list: c}
 }
 
-// PeekLen returns the number of items, recomputing if dirty.
+// PeekLen returns the number of items without subscribing an observer.
 func (c *ComputedList[K, V]) PeekLen() int {
 	c.get()
 	return len(c.items)
 }
 
-// PeekAt returns the key and value at the given index, recomputing if dirty.
+// PeekAt returns the key and value at the given index without subscribing an observer.
 func (c *ComputedList[K, V]) PeekAt(index int) (key int64, value V, ok bool) {
 	c.get()
 	if index < 0 || index >= len(c.items) {
@@ -106,7 +106,7 @@ func (c *ComputedList[K, V]) PeekAt(index int) (key int64, value V, ok bool) {
 	return item.Key, item.Value, true
 }
 
-// PeekAll returns an iterator over all key-value pairs, recomputing if dirty.
+// PeekAll returns an iterator over all key-value pairs without subscribing an observer.
 func (c *ComputedList[K, V]) PeekAll() iter.Seq2[int64, V] {
 	c.get()
 	return func(yield func(int64, V) bool) {
@@ -118,14 +118,14 @@ func (c *ComputedList[K, V]) PeekAll() iter.Seq2[int64, V] {
 	}
 }
 
-// Len subscribes the observer and returns the number of items.
+// Len returns the number of items and subscribes obs.
 func (c *ComputedList[K, V]) Len(obs Observer) int {
 	c.maybeAddObserver(c, obs)
 	c.get()
 	return len(c.items)
 }
 
-// At subscribes the observer and returns the key and value at the given index.
+// At returns the key and value at the given index and subscribes obs.
 func (c *ComputedList[K, V]) At(obs Observer, index int) (key int64, value V, ok bool) {
 	c.maybeAddObserver(c, obs)
 	c.get()
@@ -136,7 +136,7 @@ func (c *ComputedList[K, V]) At(obs Observer, index int) (key int64, value V, ok
 	return item.Key, item.Value, true
 }
 
-// All subscribes the observer and returns an iterator over all key-value pairs.
+// All returns an iterator over all key-value pairs and subscribes obs.
 func (c *ComputedList[K, V]) All(obs Observer) iter.Seq2[int64, V] {
 	c.maybeAddObserver(c, obs)
 	c.get()

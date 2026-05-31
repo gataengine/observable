@@ -11,9 +11,10 @@ var (
 	observablePool = hybridset.NewPool[Observable](32)
 )
 
-// Registry tracks observable subscriptions and dirty observers.
-// It provides an optimized subscription path that avoids per-observable
-// allocation overhead when observers and observables share a registry.
+// Registry owns subscriptions for observers with explicit lifecycles.
+// RegistryProvider uses this path automatically. A Registry can unsubscribe all
+// subscriptions for an observer, drain dirty observers, and cascade cleanup
+// through computed and mapped values.
 // Registry is safe for concurrent use.
 type Registry struct {
 	mu             sync.RWMutex
@@ -22,7 +23,7 @@ type Registry struct {
 	dirty          map[Observer]struct{}
 }
 
-// NewRegistry creates a new subscription registry.
+// NewRegistry creates an empty subscription registry.
 func NewRegistry() *Registry {
 	return &Registry{
 		obsToObservers: make(map[Observable]*hybridset.Set[Observer]),
@@ -31,8 +32,7 @@ func NewRegistry() *Registry {
 	}
 }
 
-// Subscribe registers an observer to receive notifications from an observable.
-// Fast path: if already subscribed, returns immediately.
+// Subscribe records that obs depends on o.
 func (r *Registry) Subscribe(obs Observer, o Observable) {
 	r.mu.Lock()
 	defer r.mu.Unlock()
@@ -61,8 +61,7 @@ func (r *Registry) Subscribe(obs Observer, o Observable) {
 	observables.Add(o)
 }
 
-// NotifyObservable notifies all observers of an observable that it changed.
-// Each observer's MarkUpdated() handles its own dirty tracking via OnChange callbacks.
+// NotifyObservable marks every observer subscribed to o as updated.
 func (r *Registry) NotifyObservable(o Observable) {
 	r.mu.RLock()
 	observers := r.obsToObservers[o]
@@ -94,7 +93,7 @@ func (r *Registry) NotifyObservable(o Observable) {
 	}
 }
 
-// MarkDirty marks an observer as needing update.
+// MarkDirty marks obs as updated inside the registry.
 func (r *Registry) MarkDirty(obs Observer) {
 	if obs == nil {
 		return
@@ -104,14 +103,14 @@ func (r *Registry) MarkDirty(obs Observer) {
 	r.mu.Unlock()
 }
 
-// HasDirty reports whether any observers are currently marked dirty.
+// HasDirty reports whether updated observers are waiting to drain.
 func (r *Registry) HasDirty() bool {
 	r.mu.RLock()
 	defer r.mu.RUnlock()
 	return len(r.dirty) > 0
 }
 
-// DrainDirty returns and clears all dirty observers.
+// DrainDirty returns updated observers and clears the dirty set.
 func (r *Registry) DrainDirty() []Observer {
 	r.mu.Lock()
 	defer r.mu.Unlock()
@@ -127,7 +126,7 @@ func (r *Registry) DrainDirty() []Observer {
 	return out
 }
 
-// Unsubscribe removes an observer's subscription to an observable.
+// Unsubscribe removes one observer/source subscription.
 func (r *Registry) Unsubscribe(obs Observer, o Observable) {
 	r.mu.Lock()
 	defer r.mu.Unlock()
@@ -146,9 +145,8 @@ func (r *Registry) Unsubscribe(obs Observer, o Observable) {
 	}
 }
 
-// UnsubscribeAll removes all subscriptions for an observer.
-// If any observable the observer was subscribed to is a DependentObservable
-// (e.g., ComputedValue) and now has zero observers, it is also cleaned up recursively.
+// UnsubscribeAll removes every subscription owned by obs and recursively
+// removes orphaned DependentObservable upstream subscriptions.
 func (r *Registry) UnsubscribeAll(obs Observer) {
 	r.mu.Lock()
 
@@ -202,7 +200,7 @@ func (r *Registry) UnsubscribeAll(obs Observer) {
 	}
 }
 
-// UnsubscribeObservable removes all subscriptions to an observable.
+// UnsubscribeObservable removes o and all observer subscriptions pointing to it.
 func (r *Registry) UnsubscribeObservable(o Observable) {
 	r.mu.Lock()
 	defer r.mu.Unlock()

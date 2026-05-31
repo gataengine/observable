@@ -7,15 +7,16 @@ import (
 
 var _ ROList[int] = (*List[int])(nil)
 
-// ListItem represents an item with a stable unique key.
+// ListItem is an item in an observable list. Key is stable across moves and
+// swaps so callers can diff identity separately from position.
 type ListItem[T any] struct {
 	Key   int64
 	Value T
 }
 
-// List is an observable list with stable keys for each element.
-// Widgets diff keys to determine what changed (added/removed/reordered).
-// List is safe for concurrent use.
+// List is a mutable observable list with stable item keys. Add, Insert, Set,
+// and Replace assign new keys; Move and Swap preserve keys. List is safe for
+// concurrent use.
 type List[T any] struct {
 	observableBase
 	mu      sync.RWMutex
@@ -31,7 +32,7 @@ func NewList[T any]() *List[T] {
 	}
 }
 
-// Observe subscribes and returns a getter for reading list state.
+// Observe subscribes obs and returns a getter for repeated reads.
 func (l *List[T]) Observe(obs Observer) ListGetter[T] {
 	l.mu.Lock()
 	defer l.mu.Unlock()
@@ -71,7 +72,7 @@ func (l *List[T]) PeekAll() iter.Seq2[int64, T] {
 	}
 }
 
-// Len subscribes the observer and returns the number of items.
+// Len returns the number of items and subscribes obs.
 func (l *List[T]) Len(obs Observer) int {
 	l.mu.RLock()
 	defer l.mu.RUnlock()
@@ -79,7 +80,7 @@ func (l *List[T]) Len(obs Observer) int {
 	return len(l.items)
 }
 
-// At subscribes the observer and returns the key and value at the given index.
+// At returns the key and value at the given index and subscribes obs.
 func (l *List[T]) At(obs Observer, index int) (key int64, value T, ok bool) {
 	l.mu.RLock()
 	defer l.mu.RUnlock()
@@ -91,7 +92,7 @@ func (l *List[T]) At(obs Observer, index int) (key int64, value T, ok bool) {
 	return item.Key, item.Value, true
 }
 
-// All subscribes the observer and returns an iterator over all key-value pairs.
+// All returns an iterator over all key-value pairs and subscribes obs.
 func (l *List[T]) All(obs Observer) iter.Seq2[int64, T] {
 	l.mu.RLock()
 	l.maybeAddObserver(l, obs)

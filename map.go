@@ -5,10 +5,8 @@ import (
 	"sync"
 )
 
-// Map is an observable map with user-provided keys.
-// Widgets diff keys to determine what changed (added/removed).
-// Values are assumed to be observable for value-change notifications.
-// Map is safe for concurrent use.
+// Map is a mutable observable map. Key additions, replacements, deletions,
+// merges, and clears notify observers. Map is safe for concurrent use.
 type Map[K comparable, V any] struct {
 	observableBase
 	mu    sync.RWMutex
@@ -22,7 +20,7 @@ func NewMap[K comparable, V any]() *Map[K, V] {
 	}
 }
 
-// Observe subscribes and returns a getter for reading map state.
+// Observe subscribes obs and returns a getter for repeated reads.
 func (m *Map[K, V]) Observe(obs Observer) *MapGetter[K, V] {
 	m.mu.Lock()
 	defer m.mu.Unlock()
@@ -65,7 +63,7 @@ func (m *Map[K, V]) PeekAll() iter.Seq2[K, V] {
 	}
 }
 
-// Get subscribes the observer and returns the value for the given key.
+// Get returns the value for the given key and subscribes obs.
 func (m *Map[K, V]) Get(obs Observer, key K) (value V, ok bool) {
 	m.mu.RLock()
 	defer m.mu.RUnlock()
@@ -74,7 +72,7 @@ func (m *Map[K, V]) Get(obs Observer, key K) (value V, ok bool) {
 	return
 }
 
-// All subscribes the observer and returns an iterator over all key-value pairs.
+// All returns an iterator over all key-value pairs and subscribes obs.
 func (m *Map[K, V]) All(obs Observer) iter.Seq2[K, V] {
 	m.mu.RLock()
 	m.maybeAddObserver(m, obs)

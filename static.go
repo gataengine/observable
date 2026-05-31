@@ -1,6 +1,6 @@
 package observable
 
-// Static returns an immutable Value. Set calls are ignored.
+// Static returns a Value that always reads as v and never notifies observers.
 func Static[T any](v T) Value[T] {
 	return staticValue[T]{value: v}
 }

@@ -1,7 +1,6 @@
 package observable
 
-// Simple creates a new observable value that automatically skips
-// notifications when the value is unchanged, using == comparison.
+// Simple creates an observable value for comparable values.
 func Simple[T comparable](initial T) *SimpleValue[T] {
 	return &SimpleValue[T]{
 		value: initial,
@@ -24,13 +23,13 @@ func (v *SimpleValue[T]) Set(n T) {
 	v.notifyChanged(v)
 }
 
-// Get returns the current value and subscribes the observer.
+// Get returns the current value and subscribes obs.
 func (v *SimpleValue[T]) Get(obs Observer) T {
 	v.maybeAddObserver(v, obs)
 	return v.value
 }
 
-// Peek returns the current value without subscribing any observer.
+// Peek returns the current value without subscribing an observer.
 func (v *SimpleValue[T]) Peek() T {
 	return v.value
 }
@@ -53,7 +52,7 @@ func (v *SimpleValue[T]) MaybeUpdate(cb func(*T) bool) {
 	}
 }
 
-// Observe returns a ValueGetter for repeated access without re-subscribing.
+// Observe subscribes obs and returns a getter for repeated reads.
 func (v *SimpleValue[T]) Observe(obs Observer) ValueGetter[T] {
 	v.maybeAddObserver(v, obs)
 	return &SimpleValueGetter[T]{
