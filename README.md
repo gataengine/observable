@@ -194,13 +194,20 @@ Observable supports both registry-backed subscriptions and standalone weak-point
 
 Computed values cache their last result and recompute only after a dependency marks them dirty. List and map mutations notify observers after the internal mutation is complete.
 
-Run benchmarks locally with:
+Benchmarks below were measured with `go version go1.26.0 darwin/arm64` on `Darwin arm64`.
 
-```sh
-go test -bench=. -benchmem
-```
-
-Benchmark results will be machine-specific, so measure in the environment that matters for your application.
+| Benchmark | Time | Allocations |
+| --- | --- | --- |
+| BenchmarkValuePrimitive/registry_get | 76.79 ns/op | 0 B/op, 0 allocs/op |
+| BenchmarkValuePrimitive/weak_pointer_get | 32.70 ns/op | 0 B/op, 0 allocs/op |
+| BenchmarkValuePrimitive/registry_observe_getter | 2.112 ns/op | 0 B/op, 0 allocs/op |
+| BenchmarkNotify/registry_10_observers | 59.28 ns/op | 0 B/op, 0 allocs/op |
+| BenchmarkNotify/weak_pointer_10_observers | 303.7 ns/op | 144 B/op, 6 allocs/op |
+| BenchmarkComputedChain/registry_depth_3 | 523.1 ns/op | 0 B/op, 0 allocs/op |
+| BenchmarkComputedChain/weak_pointer_depth_3 | 404.5 ns/op | 224 B/op, 12 allocs/op |
+| BenchmarkListPrimitive/registry_set | 59.00 ns/op | 0 B/op, 0 allocs/op |
+| BenchmarkMapPrimitive/registry_set | 60.96 ns/op | 0 B/op, 0 allocs/op |
+| BenchmarkUIScenario/registry_widget_with_3_deps | 494.1 ns/op | 28 B/op, 3 allocs/op |
 
 ## Thread Safety
 
