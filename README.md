@@ -49,7 +49,7 @@ Observable reads are also subscription points:
 
 `BasicObserver` is the smallest observer implementation. It records whether any subscribed source changed, exposes `IsUpdated`, and lets callers consume the flag with `GetAndResetUpdated`.
 
-Computed values track dependencies through the observer passed into the compute function. When a dependency changes, the computed value is marked dirty, notifies its observers, and recomputes on the next read.
+Computed values track dependencies through the observer passed into the compute function. When a dependency changes, the computed value is marked dirty, notifies its observers, and recomputes on the next read. If a computed value only depends on static values, such as `Static(a)` plus `Static(b)`, `NewComputed` folds it into a static value instead of keeping a live computed node.
 
 ```go
 first := observable.Simple("Ada")
