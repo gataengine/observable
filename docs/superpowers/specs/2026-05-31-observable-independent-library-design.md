@@ -1,5 +1,7 @@
 # Observable Independent Library Cleanup Design
 
+> **Status (audit 2026-10-11): Implemented.**
+
 ## Goal
 
 Make `github.com/gataengine/observable` read and behave like an independent Go library while preserving the current public API and existing benchmark scenarios.

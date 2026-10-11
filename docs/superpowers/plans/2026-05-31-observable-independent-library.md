@@ -1,5 +1,7 @@
 # Observable Independent Library Implementation Plan
 
+> **Status (audit 2026-10-11): Implemented.** Checkboxes below were never ticked.
+
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
 **Goal:** Make `github.com/gataengine/observable` present as an independent Go reactive primitives library through README, Go docs, and benchmark coverage while preserving the public API and all existing benchmark scenarios.
