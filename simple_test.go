@@ -125,7 +125,7 @@ var _ = Describe("NonComparableValue", func() {
 			Expect(isObserverRegistered(reg2, ctx2.observer)).To(BeFalse())
 
 			// But weak pointer set should have ctx2
-			Expect(v.observers).NotTo(BeNil())
+			Expect(v.observers.Load()).NotTo(BeNil())
 		})
 	})
 })
